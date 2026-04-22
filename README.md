@@ -49,6 +49,14 @@ For GraphQL usage:
   - Returns policy + identity mapping details.
 - `POST /api/policies/{customerId}/dry-run`
   - Returns generated SQL without executing.
+- `GET /api/introspect/metadata`
+  - Lists schemas, tables, columns, and data types for admin UI pickers.
+- `GET /api/introspect/sample?schemaName=&tableName=&top=20`
+  - Returns top N sample rows for selected table.
+- `GET /api/introspect/policy-overlay/{customerId}`
+  - Returns currently saved policy + identity map for that customer.
+- `GET /api/introspect/filter-fields?schemaName=&tableName=`
+  - Returns columns and data types for row-filter builder.
 
 ## Request Payload
 
@@ -111,6 +119,7 @@ For GraphQL usage:
     - Create/update policy actions
     - Delete policy actions
     - Get policy actions
+    - Metadata introspection and sample row queries
   - Keeps value inputs parameterized.
 - `src/http_handlers.py`
   - HTTP layer for parsing requests and constructing responses.
@@ -131,6 +140,13 @@ For GraphQL usage:
     - Execute delete batch.
     - Read policy + identity mapping records.
   - Supports dry-run mode that returns generated SQL.
+- `src/services/introspection_service.py`
+  - Read-only metadata and discovery layer for admins.
+  - Main responsibilities:
+    - List schemas/tables/columns from `INFORMATION_SCHEMA`.
+    - Return sample rows (`TOP N`) for selected tables.
+    - Return policy overlay by customer.
+    - Return filter-builder fields (column + datatype).
 
 ### SQL Folder Explanation (`sql/`)
 
@@ -207,6 +223,66 @@ func start
 API base URL locally:
 - `http://localhost:7071/api`
 
+## Frontend Admin UI (React + Vite)
+
+The repo now includes a simple admin UI at `frontend/` for policy management.
+
+### Frontend structure
+
+- `frontend/src/App.tsx`
+  - Main admin page and state orchestration.
+- `frontend/src/api/client.ts`
+  - Typed wrappers for policy and introspection endpoints.
+- `frontend/src/components/SchemaTablePicker.tsx`
+  - Schema/table selectors.
+- `frontend/src/components/ColumnChecklist.tsx`
+  - Check/uncheck columns for CLS.
+- `frontend/src/components/FilterBuilder.tsx`
+  - Row filter builder (column/operator/value).
+- `frontend/src/components/SampleTablePreview.tsx`
+  - Sample rows table preview.
+- `frontend/src/components/PolicyOverlay.tsx`
+  - Displays current saved policy/identities for customer.
+- `frontend/src/components/PolicyActions.tsx`
+  - Create/Update/Delete/Dry-run action buttons.
+
+### Frontend env setup
+
+Copy:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+Default value:
+- `VITE_API_BASE_URL=http://localhost:7071/api`
+
+### Run frontend locally
+
+```bash
+npm --prefix "/Users/blackpearl/Desktop/projects/python/fabric/frontend" install
+npm --prefix "/Users/blackpearl/Desktop/projects/python/fabric/frontend" run dev
+```
+
+Frontend URL:
+- `http://localhost:5173`
+
+### Run backend + frontend together
+
+Terminal 1 (backend):
+
+```bash
+cd /Users/blackpearl/Desktop/projects/python/fabric
+source .venv/bin/activate
+func start
+```
+
+Terminal 2 (frontend):
+
+```bash
+npm --prefix "/Users/blackpearl/Desktop/projects/python/fabric/frontend" run dev
+```
+
 ### Local Test Sequence
 
 1. Run `sql/bootstrap_security.sql` on your Fabric SQL endpoint.
@@ -268,6 +344,30 @@ curl -X POST "http://localhost:7071/api/policies/A/dry-run" \
     "tableAccess":true,
     "identities":[{"oid":"00000000-0000-0000-0000-000000000001","upn":"customer.a@contoso.com"}]
   }'
+```
+
+### Introspection metadata
+
+```bash
+curl "http://localhost:7071/api/introspect/metadata"
+```
+
+### Introspection sample rows
+
+```bash
+curl "http://localhost:7071/api/introspect/sample?schemaName=sales&tableName=Orders&top=20"
+```
+
+### Introspection policy overlay
+
+```bash
+curl "http://localhost:7071/api/introspect/policy-overlay/A"
+```
+
+### Introspection filter fields
+
+```bash
+curl "http://localhost:7071/api/introspect/filter-fields?schemaName=sales&tableName=Orders"
 ```
 
 ## Error Handling and Reliability

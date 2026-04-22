@@ -3,7 +3,11 @@ import azure.functions as func
 from src.http_handlers import (
     delete_policy_handler,
     dry_run_policy_handler,
+    filter_fields_handler,
     get_policy_handler,
+    introspect_metadata_handler,
+    introspect_sample_handler,
+    policy_overlay_handler,
     upsert_policy_handler,
 )
 
@@ -38,3 +42,23 @@ def get_policy(req: func.HttpRequest) -> func.HttpResponse:
 @app.route(route="policies/{customerId}/dry-run", methods=["POST"])
 def dry_run_policy(req: func.HttpRequest) -> func.HttpResponse:
     return dry_run_policy_handler(req, req.route_params.get("customerId"))
+
+
+@app.route(route="introspect/metadata", methods=["GET"])
+def introspect_metadata(req: func.HttpRequest) -> func.HttpResponse:
+    return introspect_metadata_handler(req)
+
+
+@app.route(route="introspect/sample", methods=["GET"])
+def introspect_sample(req: func.HttpRequest) -> func.HttpResponse:
+    return introspect_sample_handler(req)
+
+
+@app.route(route="introspect/policy-overlay/{customerId}", methods=["GET"])
+def introspect_policy_overlay(req: func.HttpRequest) -> func.HttpResponse:
+    return policy_overlay_handler(req, req.route_params.get("customerId"))
+
+
+@app.route(route="introspect/filter-fields", methods=["GET"])
+def introspect_filter_fields(req: func.HttpRequest) -> func.HttpResponse:
+    return filter_fields_handler(req)

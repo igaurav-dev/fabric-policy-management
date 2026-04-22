@@ -296,3 +296,91 @@ def build_get_policy_sql(customer_id: str) -> list[tuple[str, list[Any]]]:
 
 def to_debug_sql(statements: list[tuple[str, list[Any]]]) -> list[dict[str, Any]]:
     return [{"sql": sql.strip(), "params": params} for sql, params in statements]
+
+
+def build_list_metadata_sql() -> tuple[str, list[Any]]:
+    return (
+        """
+        SELECT
+            c.TABLE_SCHEMA,
+            c.TABLE_NAME,
+            c.COLUMN_NAME,
+            c.DATA_TYPE,
+            c.ORDINAL_POSITION
+        FROM INFORMATION_SCHEMA.COLUMNS c
+        INNER JOIN INFORMATION_SCHEMA.TABLES t
+            ON c.TABLE_SCHEMA = t.TABLE_SCHEMA
+           AND c.TABLE_NAME = t.TABLE_NAME
+        WHERE t.TABLE_TYPE = 'BASE TABLE'
+        ORDER BY c.TABLE_SCHEMA, c.TABLE_NAME, c.ORDINAL_POSITION;
+        """,
+        [],
+    )
+
+
+def build_sample_rows_sql(schema_name: str, table_name: str, top_n: int) -> tuple[str, list[Any]]:
+    validate_identifier(schema_name, "schemaName")
+    validate_identifier(table_name, "tableName")
+    if top_n <= 0:
+        raise ValueError("top must be greater than 0.")
+    if top_n > 100:
+        raise ValueError("top cannot be greater than 100.")
+
+    schema_q = quote_identifier(schema_name)
+    table_q = quote_identifier(table_name)
+    sql = f"SELECT TOP ({top_n}) * FROM {schema_q}.{table_q};"
+    return sql, []
+
+
+def build_policy_overlay_sql(customer_id: str) -> list[tuple[str, list[Any]]]:
+    return [
+        (
+            """
+            SELECT
+                CustomerID,
+                SchemaName,
+                TableName,
+                AllowedColumns,
+                FilterColumn,
+                FilterOperator,
+                FilterValue,
+                TableAccess,
+                UpdatedAt
+            FROM security.CustomerPolicies
+            WHERE CustomerID = ?
+            ORDER BY SchemaName, TableName;
+            """,
+            [customer_id],
+        ),
+        (
+            """
+            SELECT
+                IdentityOid,
+                IdentityUpn,
+                CustomerID,
+                IsActive,
+                UpdatedAt
+            FROM security.CustomerIdentityMap
+            WHERE CustomerID = ?
+            ORDER BY IdentityOid;
+            """,
+            [customer_id],
+        ),
+    ]
+
+
+def build_filter_fields_sql(schema_name: str, table_name: str) -> tuple[str, list[Any]]:
+    validate_identifier(schema_name, "schemaName")
+    validate_identifier(table_name, "tableName")
+    return (
+        """
+        SELECT
+            COLUMN_NAME,
+            DATA_TYPE,
+            ORDINAL_POSITION
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+        ORDER BY ORDINAL_POSITION;
+        """,
+        [schema_name, table_name],
+    )

@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/api/client.ts","./src/components/columnchecklist.tsx","./src/components/filterbuilder.tsx","./src/components/policyactions.tsx","./src/components/policyoverlay.tsx","./src/components/sampletablepreview.tsx","./src/components/schematablepicker.tsx"],"version":"5.9.3"}
